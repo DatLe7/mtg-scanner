@@ -2,7 +2,8 @@ import csv
 import requests
 import time
 
-def download_image(id: str, path: str, header: dict):
+def download_image(id: str, path: str, header: dict): 
+    '''returns true if downloaded else false'''
     time.sleep(0.1)
     url = f'https://api.scryfall.com/cards/{id}'
     param = {'format' : 'image', 'version' : 'large'}
@@ -35,6 +36,7 @@ def build_csv(card_ids: list, img_path: str, csv_name: str, header: dict):
 
 
 def get_card_ids(search_uris: list, header: dict):
+    '''return all card ids from a set'''
     card_ids = []
     while search_uris:
         uri = search_uris.pop()
@@ -42,7 +44,7 @@ def get_card_ids(search_uris: list, header: dict):
         
         if response.ok:
             data = response.json()
-            if data.get('has_more') and data.get('next_page'):
+            if data.get('has_more') and data.get('next_page'): # checks if set contains more data
                 search_uris.append(data['next_page'])
             card_data = data.get('data')
             if card_data:
