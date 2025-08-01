@@ -18,6 +18,8 @@ transform = transforms.Compose([
 
 with open('idx_2_label.json', 'r') as f:
     idx_2_label = json.load(f)
+with open('id_2_name.json', 'r') as f:
+    id_2_name = json.load(f)
 
 checkpoint = torch.load('checkpoint/v2checkpoint#9.pth')
 model = resnet18()
@@ -45,7 +47,8 @@ def classify_card(img):
     if (pred_prob > 0.8):
         pred_idx = torch.argmax(outputs, dim=1).item()
         # print(f"Top class: " + idx_2_label[str(pred_idx)] + ", Prob: {pred_prob:.4f}")
-        return idx_2_label[str(pred_idx)]
+        id = idx_2_label[str(pred_idx)]
+        return id_2_name[id]
     return None
 
 
@@ -109,7 +112,7 @@ while True:
         prediction = classify_card(result)
         if prediction is not None:
             print(prediction)
-        cv.imshow('card', result)
+        # cv.imshow('card', result)
 
     cv.imshow('Webcam (type q to exit)', frame)
 
