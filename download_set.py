@@ -84,4 +84,4 @@ def download_set(set_code: str, img_path: str, csv_name: str, header: dict):
 header={'User-Agent' : 'MTG_Card_Scanner/1.0', 'accept' : 'application/json'}
 img_path = 'images/'
 csv_name = 'mtgdb.csv'
-download_set('mh3', img_path, csv_name, header)
+download_set('m3c', img_path, csv_name, header)

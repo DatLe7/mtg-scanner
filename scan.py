@@ -19,7 +19,7 @@ transform = transforms.Compose([
 with open('idx_2_label.json', 'r') as f:
     idx_2_label = json.load(f)
 
-checkpoint = torch.load('checkpoint/v2checkpoint#5.pth')
+checkpoint = torch.load('checkpoint/v2checkpoint#9.pth')
 model = resnet18()
 model.fc = nn.Sequential(
     nn.Linear(model.fc.in_features, 512),
