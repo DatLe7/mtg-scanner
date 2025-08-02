@@ -68,6 +68,14 @@ capture = cv.VideoCapture(0)
 capture.set(cv.CAP_PROP_FRAME_WIDTH, 1920)
 capture.set(cv.CAP_PROP_FRAME_HEIGHT, 1080)
 
+text = None
+font = cv.FONT_HERSHEY_SIMPLEX
+font_scale = 0.7
+text_thickness = 1
+text_color = (0, 255, 0)
+
+card_cnt = None
+
 
 while True:
     istrue, frame = capture.read()
@@ -90,14 +98,17 @@ while True:
         area = cv.contourArea(cnt)
         perimeter = cv.arcLength(cnt, True)
         approx = cv.approxPolyDP(cnt, 0.02 * perimeter, True)
-        if len(approx) == 4 and area > 1000:
+        if len(approx) == 4 and area > 10000:
             filtered_contours.append(cnt)
     
-    for cnt in filtered_contours:
-        x, y, w, h = cv.boundingRect(cnt)
+    if filtered_contours:
+        card_cnt = filtered_contours[0]
+
+    if card_cnt is not None:
+        x, y, w, h = cv.boundingRect(card_cnt)
         cv.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
-        perimeter = cv.arcLength(cnt, True)
-        corners = cv.approxPolyDP(cnt, 0.02 * perimeter, True)
+        perimeter = cv.arcLength(card_cnt, True)
+        corners = cv.approxPolyDP(card_cnt, 0.02 * perimeter, True)
         pts1 = corners.reshape(4, 2).astype(np.float32)
         pts1 = order_points(pts1)
         width, height = 500, 700
@@ -112,7 +123,14 @@ while True:
         prediction = classify_card(result)
         if prediction is not None:
             print(prediction)
-        # cv.imshow('card', result)
+            text = prediction
+            
+    if text is not None:
+        (text_width, text_height), baseline = cv.getTextSize(text, font, font_scale, text_thickness)
+        text_x = x
+        text_y = y - 10
+        text_y = max(text_height, text_y)
+        cv.putText(frame, text, (text_x, text_y), font, font_scale, text_color, text_thickness)
 
     cv.imshow('Webcam (type q to exit)', frame)
 
