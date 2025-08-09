@@ -1,3 +1,7 @@
 .venv/
 images/
 mtgdb.csv
+instance_segmentation/backgrounds
+instance_segmentation/card_dataset
+instance_segmentation/data.yaml
+phash
