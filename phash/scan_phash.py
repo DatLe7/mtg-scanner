@@ -1,40 +1,48 @@
 import cv2 as cv
-import numpy as np
-from torch import nn
-from PIL import Image
-from torchvision import transforms
-from torchvision.models import resnet18
-from torch import nn
-import torch
-import json
 from ultralytics import YOLO
+import imagehash
+from PIL import Image
+import pandas as pd
+import numpy as np
 
-
-def classify_card(img):
+def difference(hash1: str, hash2: str):
     """
-    Classifies a given card image using a pre-trained ResNet18 model.
+    Computes the Hamming distance (number of differing bits) between two perceptual hashes.
 
     Args:
-        img (numpy.ndarray): The image of the card (BGR format from OpenCV).
+        hash1 (str): Hexadecimal string of the first hash.
+        hash2 (str): Hexadecimal string of the second hash.
 
     Returns:
-        str or None: The predicted card name if the prediction probability > 0.8,
-                     otherwise None.
+        int: Number of differing bits between the two hashes.
     """
-    model.eval()
-    img = Image.fromarray(img).convert('RGB')
-    img = transform(img)
-    img = img.unsqueeze(0)
-    img = img.to(device)
-    with torch.no_grad():
-        outputs = model(img)
-    probs = torch.softmax(outputs, dim=1)
-    pred_prob = probs.max().item()
-    if (pred_prob > 0.8):
-        pred_idx = torch.argmax(outputs, dim=1).item()
-        id = idx_2_label[str(pred_idx)]
-        return id_2_name[id]
-    return None
+    diff = int(hash1, 16) ^ int(hash2, 16)
+    return diff.bit_count()
+
+
+def find_card(card_hash):
+    """
+    Finds the closest matching card in the database using perceptual hash comparison.
+
+    Args:
+        card_hash (str): Hexadecimal string of the perceptual hash of the detected card.
+
+    Returns:
+        str: Name of the closest matching card.
+    """
+    min_name = df['name'][0]
+    min_hash = df['phash'][0]
+    min_diff = difference(min_hash, card_hash)
+
+    for row in df.itertuples():
+        diff = difference(row.phash, card_hash)
+        if (diff < min_diff):
+            min_name = row.name
+            min_hash = row.phash
+            min_diff = diff
+    if (min_diff < 8):
+        print(min_diff)
+    return min_name
 
 
 def get_corners(coords, grid_x, grid_y): # the yolo segmentation model sometimes halucinates protrusions from the card so this filters them out
@@ -116,32 +124,10 @@ def draw_text(img, text, x, y, font, font_scale, text_thickness, text_color):
     cv.putText(img, text, (x, y), font, font_scale, text_color, text_thickness)
 
 
-# label mappings
-with open('cnn/idx_2_label.json', 'r') as f:
-    idx_2_label = json.load(f)
-with open('cnn/id_2_name.json', 'r') as f:
-    id_2_name = json.load(f)
+# Load Precalculated pHashes
+df = pd.read_csv('phash/phashes.csv')
 
-# CNN Clasifier & Image Transform Setup
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
-
-checkpoint = torch.load('cnn/models/v1.pth')
-model = resnet18()
-model.fc = nn.Sequential(
-    nn.Linear(model.fc.in_features, 512),
-    nn.ReLU(inplace=True),
-    nn.Dropout(0.5),
-    nn.Linear(512, 528)
-)
-model.load_state_dict(checkpoint['model_state_dict'])
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-model.to(device)
-
-# Instance Segmentation Setup
+# Load Segmentation Model
 MODEL_SEGMENT_PATH = 'instance_segmentation/models/v1.pt'
 model_segment = YOLO(MODEL_SEGMENT_PATH)
 
@@ -166,11 +152,20 @@ while True:
 
                 card_pts = np.array(pts, dtype=np.float32)
                 card = isolate_card(frame, card_pts)
-                prediction = classify_card(card)
+                card = cv.resize(card, (300, 420))
+                x1, y1 = 23, 40
+                x2, y2 = 277, 246
+                art = card[y1:y2, x1:x2]
+                art = cv.cvtColor(art, cv.COLOR_BGR2GRAY)
+                art = cv.GaussianBlur(art, (3,3), cv.BORDER_DEFAULT)
+                art = cv.equalizeHist(art)
+                art = Image.fromarray(art).convert('RGB')
+                card_hash = imagehash.phash(art, hash_size=16)
+                prediction = find_card(str(card_hash))
 
                 contour = np.array(pts, dtype=np.int32).reshape((-1, 1, 2))
                 draw_bbox(frame, contour, prediction)
-            
+
 
     cv.imshow('Webcam (type q to exit)', frame)
 
